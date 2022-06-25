@@ -107,20 +107,7 @@ connectToWifi();
 void loop() {
   sensors();
   SendDataToInfluxdbServer();
-  deep_sleep();
 }
-
-
-void deep_sleep(){
-  Serial.print("Passage en mode Deep Sleep");
-  //Passe en mode deepsleep 5 secondes
-//  ESP.deepSleep( 5e6 );
-  
-  //Passe en mode deepsleep 8 secondes (multiplie les secondes par 1 000 000)
-  ESP.deepSleep( 20 * 1000000 ); 
-}
-
-
 
 
 void sensors() {
@@ -188,12 +175,10 @@ void sensors() {
     lcd.print(humidite_ex,0);
     lcd.print("%");  
   }
-
-  
 //————————————————
 //IN: 26,5°C | 45%
 //EX: 35,3°C | 62%
-//————————————————
+//———————————————— 
   }
 }
 
