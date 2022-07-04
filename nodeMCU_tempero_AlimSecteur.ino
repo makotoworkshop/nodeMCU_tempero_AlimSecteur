@@ -14,6 +14,8 @@ Envoient leurs valeurs sur un serveur influxDB + Grafana
 //################
 //# DÉCLARATIONS #
 //################
+int EXfailed = 0;
+int INfailed = 0;
 
 //——— DHT Sensors ———//
 #define DHTinPIN D5     // what digital pin the DHT22 is conected to
@@ -45,7 +47,7 @@ Influxdb influxdb(INFLUXDB_HOST, INFLUXDB_PORT);  //https://github.com/projetsdi
 
 
 //——— WiFi ———//
-char ssid[] = "xxxx";
+char ssid[] = "SSID_";
 char password[] = "xxxx";
 void connectToWifi() {
   Serial.println("Connecting to WiFi...");
@@ -109,7 +111,6 @@ void loop() {
   SendDataToInfluxdbServer();
 }
 
-
 void sensors() {
   unsigned long currentMillis = millis();
     // Every X number of seconds (interval = 2 seconds) 
@@ -129,6 +130,7 @@ void sensors() {
     Serial.println(F("Failed to read from DHT sensor IN !"));
     lcd.setCursor(0,0); // Sets the location at which subsequent text written to the LCD will be displayed
     lcd.print(" Read IN failed ");
+    INfailed = 1;
  //   return;
   }
   else {
@@ -147,7 +149,8 @@ void sensors() {
     lcd.print((char)223);
     lcd.print("C | ");
     lcd.print(humidite_in,0);
-    lcd.print("%");   
+    lcd.print("%");
+    INfailed = 0;
   }
   
 
@@ -156,6 +159,7 @@ void sensors() {
     Serial.println(F("Failed to read from DHT sensor EX !"));
     lcd.setCursor(0,1);
     lcd.print(" Read EX failed ");
+    EXfailed = 1;
  //   return;
   }
   else {
@@ -174,11 +178,12 @@ void sensors() {
     lcd.print("C | ");
     lcd.print(humidite_ex,0);
     lcd.print("%");  
+    EXfailed = 0;
   }
 //————————————————
 //IN: 26,5°C | 45%
 //EX: 35,3°C | 62%
-//———————————————— 
+//————————————————
   }
 }
 
@@ -192,17 +197,38 @@ void SendDataToInfluxdbServer() { //Writing data with influxdb HTTP API: https:/
   if (currentMillis - previousMillisDB >= intervalDB) {
     // Save the last time a new reading was published
     previousMillisDB = currentMillis;
-     
-    dbMeasurement rowDATA("Data");
-    rowDATA.addField("Temperature_interieure", temperature_in);
-    rowDATA.addField("Humidite_interieure", humidite_in);
-    rowDATA.addField("Temperature_exterieure", temperature_ex);
-    rowDATA.addField("Humidite_exterieure", humidite_ex);
-    Serial.println(influxdb.write(rowDATA) == DB_SUCCESS ? " - rowDATA write success" : " - Writing failed");
-    influxdb.write(rowDATA);
-  
-    // Vide les données - Empty field object.
-    rowDATA.empty();
+
+    if (INfailed == 1) {  // lecture du capteur intérieur HS
+      dbMeasurement rowDATA("Data");
+      rowDATA.addField("Temperature_exterieure", temperature_ex);
+      rowDATA.addField("Humidite_exterieure", humidite_ex);
+      Serial.println(influxdb.write(rowDATA) == DB_SUCCESS ? " - rowDATA write EX success" : " - Writing EX failed");
+      influxdb.write(rowDATA);
+    
+      // Vide les données - Empty field object.
+      rowDATA.empty();
+    }
+    else if (EXfailed == 1) {  // lecture du capteur extérieur HS
+      dbMeasurement rowDATA("Data");
+      rowDATA.addField("Temperature_interieure", temperature_in);
+      rowDATA.addField("Humidite_interieure", humidite_in);
+      Serial.println(influxdb.write(rowDATA) == DB_SUCCESS ? " - rowDATA write IN success" : " - Writing IN failed");
+      influxdb.write(rowDATA);
+    
+      // Vide les données - Empty field object.
+      rowDATA.empty();
+    }
+    else {  // lecture des deux capteurs ok !
+      dbMeasurement rowDATA("Data");
+      rowDATA.addField("Temperature_interieure", temperature_in);
+      rowDATA.addField("Humidite_interieure", humidite_in);
+      rowDATA.addField("Temperature_exterieure", temperature_ex);
+      rowDATA.addField("Humidite_exterieure", humidite_ex);
+      Serial.println(influxdb.write(rowDATA) == DB_SUCCESS ? " - rowDATA write success" : " - Writing failed");
+      influxdb.write(rowDATA);
+    
+      // Vide les données - Empty field object.
+      rowDATA.empty();
+    }
   }
 }
-
